@@ -2,19 +2,16 @@
 
 from __future__ import with_statement
 
-import sys
-import os, os.path
-import tempfile
 import cPickle
 
-from pebl import config, result
+from pebl import config
 from pebl.taskcontroller.base import _BaseSubmittingController, DeferredResult
-from pebl.learner import custom
 
 try:
     import ipython1.kernel.api as ipy1kernel
 except:
     ipy1kernel = False
+
 
 class IPython1DeferredResult(DeferredResult):
     def __init__(self, ipy1_taskcontroller, taskid):
@@ -25,7 +22,7 @@ class IPython1DeferredResult(DeferredResult):
     def result(self):
         if not hasattr(self, 'ipy1result'):
             self.ipy1result = self.tc.getTaskResult(self.taskid, block=True)
-        
+
         return self.ipy1result['result']
 
     @property
@@ -36,6 +33,7 @@ class IPython1DeferredResult(DeferredResult):
             return True
         return False
 
+
 class IPython1Controller(_BaseSubmittingController):
     _params = (
         config.StringParameter(
@@ -44,7 +42,7 @@ class IPython1Controller(_BaseSubmittingController):
             default='127.0.0.1:10113'
         )
     )
- 
+
     def __init__(self, tcserver=None):
         """Create a IPython1Controller instance.
 
@@ -52,11 +50,11 @@ class IPython1Controller(_BaseSubmittingController):
         It should be of the form <ip>:<port>. (default is "127.0.0.1:10113").
         
         """
-        
+
         if not ipy1kernel:
             print "IPython1 not found."
             return None
-    
+
         self.tcserver = tcserver or config.get('ipython1.controller')
         self.tc = ipy1kernel.TaskController(tuple(self.tcserver.split(':')))
 
@@ -66,10 +64,10 @@ class IPython1Controller(_BaseSubmittingController):
             # create an ipython1 task from pebl task
             ipy1task = ipy1kernel.Task(
                 "from pebl.pebl_script import runtask_picklestr; result = runtask_picklestr(task)",
-                resultNames = ['result'],
-                setupNS = {'task': cPickle.dumps(task)}
+                resultNames=['result'],
+                setupNS={'task': cPickle.dumps(task)}
             )
-            
+
             task.ipy1_taskid = self.tc.run(ipy1task)
             drs.append(IPython1DeferredResult(self.tc, task.ipy1_taskid))
         return drs
@@ -79,5 +77,3 @@ class IPython1Controller(_BaseSubmittingController):
         taskids = [dr.taskid for dr in deferred_results]
         self.tc.barrier(taskids)
         return [dr.result for dr in deferred_results]
-    
-

@@ -1,9 +1,9 @@
 """Classes and functions for Simulated Annealing learner"""
 
-from math import exp
 import random
+from math import exp
 
-from pebl import network, result, evaluator, config
+from pebl import result
 from pebl.learner.base import *
 
 
@@ -71,23 +71,23 @@ class SimulatedAnnealingLearner(Learner):
         
         """
 
-        super(SimulatedAnnealingLearner,self).__init__(data_, prior_)
+        super(SimulatedAnnealingLearner, self).__init__(data_, prior_)
         config.setparams(self, options)
         if not isinstance(self.seed, network.Network):
             self.seed = network.Network(self.data.variables, self.seed)
-        
+
     def run(self):
         """Run the learner."""
 
-        self.stats = SALearnerStatistics(self.start_temp, self.delta_temp, 
+        self.stats = SALearnerStatistics(self.start_temp, self.delta_temp,
                                          self.max_iters_at_temp)
-        self.result =  result.LearnerResult(self)
+        self.result = result.LearnerResult(self)
         self.evaluator = evaluator.fromconfig(self.data, self.seed, self.prior)
         self.evaluator.score_network(self.seed.copy())
 
         self.result.start_run()
         curscore = self.evaluator.score_network()
-        
+
         # temperature decays exponentially, so we'll never get to 0. 
         # So, we continue until temp < 1
         while self.stats.temp >= 1:
@@ -108,7 +108,7 @@ class SimulatedAnnealingLearner(Learner):
                 self.evaluator.restore_network()
 
             # temp not updated EVERY iteration. just whenever criteria met.
-            self.stats.update() 
+            self.stats.update()
 
         self.result.stop_run()
         return self.result
@@ -118,8 +118,7 @@ class SimulatedAnnealingLearner(Learner):
 
         if newscore >= oldscore:
             return True
-        elif random.random() < exp((newscore - oldscore)/self.stats.temp):
+        elif random.random() < exp((newscore - oldscore) / self.stats.temp):
             return True
         else:
             return False
-

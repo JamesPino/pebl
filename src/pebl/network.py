@@ -1,15 +1,11 @@
 """Classes for representing networks and functions to create/modify them."""
 
-import re
-import tempfile
 import os
-from copy import copy, deepcopy
-from itertools import chain
+import tempfile
 from bisect import insort
-from collections import deque
+from copy import deepcopy
 
 import pydot
-import numpy as N
 
 from pebl.util import *
 
@@ -17,6 +13,7 @@ try:
     from pebl import _network
 except:
     _network = None
+
 
 class EdgeSet(object):
     """
@@ -33,24 +30,24 @@ class EdgeSet(object):
 
     def __init__(self, num_nodes=0):
         self._outgoing = [[] for i in xrange(num_nodes)]
-        self._incoming = [[] for i in xrange(num_nodes)] 
+        self._incoming = [[] for i in xrange(num_nodes)]
 
     def clear(self):
         """Clear the list of edges."""
-        self.__init__(len(self._outgoing)) 
+        self.__init__(len(self._outgoing))
 
     def add(self, edge):
         """Add an edge to the list."""
         self.add_many([edge])
-        
+
     def add_many(self, edges):
         """Add multiple edges."""
 
-        for src,dest in edges:
-            if dest not in self._outgoing[src]: 
+        for src, dest in edges:
+            if dest not in self._outgoing[src]:
                 insort(self._outgoing[src], dest)
                 insort(self._incoming[dest], src)
-            
+
     def remove(self, edge):
         """Remove edges from edgelist.
         
@@ -62,11 +59,11 @@ class EdgeSet(object):
     def remove_many(self, edges):
         """Remove multiple edges."""
 
-        for src,dest in edges:
-            try: 
+        for src, dest in edges:
+            try:
                 self._incoming[dest].remove(src)
                 self._outgoing[src].remove(dest)
-            except KeyError, ValueError: 
+            except KeyError, ValueError:
                 pass
 
     def incoming(self, node):
@@ -98,20 +95,20 @@ class EdgeSet(object):
             print edge
 
         """
-        
+
         for src, dests in enumerate(self._outgoing):
             for dest in dests:
                 yield (src, dest)
 
     def __eq__(self, other):
-        for out1,out2 in zip(self._outgoing, other._outgoing):
+        for out1, out2 in zip(self._outgoing, other._outgoing):
             if out1 != out2:
                 return False
         return True
 
     def __hash__(self):
         return hash(tuple(tuple(s) for s in self._outgoing))
-        
+
     def __copy__(self):
         other = EdgeSet.__new__(EdgeSet)
         other._outgoing = [[i for i in lst] for lst in self._outgoing]
@@ -159,7 +156,7 @@ class EdgeSet(object):
         def fset(self, adjlists):
             if len(adjlists) is not 2:
                 raise Exception("Specify both outgoing and incoming lists.")
-           
+
             # adjlists could be any iterable. convert to list of lists
             _outgoing, _incoming = adjlists
             self._outgoing = [list(lst) for lst in _outgoing]
@@ -188,7 +185,6 @@ class EdgeSet(object):
 
 class Network(object):
     """A network is a set of nodes and directed edges between nodes"""
-    
 
     #
     # Public methods
@@ -205,7 +201,7 @@ class Network(object):
             * string representation (see Network.as_string() for format)
 
         """
-        
+
         self.nodes = nodes
         self.nodeids = range(len(nodes))
 
@@ -214,7 +210,7 @@ class Network(object):
             self.edges = edges
         elif isinstance(edges, N.ndarray):
             self.edges = EdgeSet(len(edges))
-            self.edges.adjacency_matrix = edges    
+            self.edges.adjacency_matrix = edges
         else:
             self.edges = EdgeSet(len(self.nodes))
             if isinstance(edges, list):
@@ -249,12 +245,11 @@ class Network(object):
             # got here without returning false, so no cycles below rootnodes
             return True
 
-        #---------------
+        # ---------------
 
         children = self.edges.children
         roots = set(roots) if roots else set(range(len(self.nodes)))
         return _isacyclic(roots, set())
-
 
     # TODO: test
     def copy(self):
@@ -262,9 +257,9 @@ class Network(object):
         newedges = EdgeSet(len(self.nodes))
         newedges.adjacency_lists = deepcopy(self.edges.adjacency_lists)
 
-        return Network(self.nodes, newedges)    
-       
-    def layout(self, width=400, height=400, dotpath="dot"): 
+        return Network(self.nodes, newedges)
+
+    def layout(self, width=400, height=400, dotpath="/usr/local/bin/dot"):
         """Determines network layout using Graphviz's dot algorithm.
 
         width and height are in pixels.
@@ -286,8 +281,7 @@ class Network(object):
 
         dotgraph = pydot.graph_from_dot_file(dot2)
         nodes = (n for n in dotgraph.get_node_list() if n.get_pos())
-        self.node_positions = [[int(float(i)) for i in n.get_pos()[1:-1].split(',')] for n in nodes] 
-
+        self.node_positions = [[int(float(i)) for i in n.get_pos()[1:-1].split(',')] for n in nodes]
 
     def as_string(self):
         """Returns the sparse string representation of network.
@@ -298,31 +292,28 @@ class Network(object):
         """
 
         return ";".join([",".join([str(n) for n in edge]) for edge in list(self.edges)])
-       
-    
+
     def as_dotstring(self):
         """Returns network as a dot-formatted string"""
 
         def node(n, position):
             s = "\t\"%s\"" % n.name
             if position:
-                x,y = position
-                s += " [pos=\"%d,%d\"]" % (x,y)
+                x, y = position
+                s += " [pos=\"%d,%d\"]" % (x, y)
             return s + ";"
-
 
         nodes = self.nodes
         positions = self.node_positions if hasattr(self, 'node_positions') \
-                                        else [None for n in nodes]
+            else [None for n in nodes]
 
         return "\n".join(
-            ["digraph G {"] + 
-            [node(n, pos) for n,pos in zip(nodes, positions)] + 
-            ["\t\"%s\" -> \"%s\";" % (nodes[src].name, nodes[dest].name) 
-                for src,dest in self.edges] +
+            ["digraph G {"] +
+            [node(n, pos) for n, pos in zip(nodes, positions)] +
+            ["\t\"%s\" -> \"%s\";" % (nodes[src].name, nodes[dest].name)
+             for src, dest in self.edges] +
             ["}"]
         )
- 
 
     def as_dotfile(self, filename):
         """Saves network as a dot file."""
@@ -331,12 +322,10 @@ class Network(object):
         f.write(self.as_dotstring())
         f.close()
 
-
     def as_pydot(self):
         """Returns a pydot instance for the network."""
 
         return pydot.graph_from_dot_data(self.as_dotstring())
-
 
     def as_image(self, filename, decorator=lambda x: x, prog='dot'):
         """Creates an image (PNG format) for the newtork.
@@ -348,20 +337,21 @@ class Network(object):
         prog is the Graphviz program to use (default: dot).
 
         """
-        
+
         g = self.as_pydot()
         g = decorator(g)
         g.write_png(filename, prog=prog)
 
 
-#        
+#
 # Factory functions
 #
 def fromdata(data_):
     """Creates a network from the variables in the dataset."""
     return Network(data_.variables)
 
-def random_network(nodes, required_edges=[], prohibited_edges=[]):
+
+def random_network(nodes, required_edges=None, prohibited_edges=[]):
     """Creates a random network with the given set of nodes.
 
     Can specify required_edges and prohibited_edges to control the resulting
@@ -369,28 +359,31 @@ def random_network(nodes, required_edges=[], prohibited_edges=[]):
     
     """
 
+    if required_edges is None:
+        required_edges = []
+
     def _randomize(net, density=None):
         n_nodes = len(net.nodes)
-        density = density or 1.0/n_nodes
+        density = density or 1.0 / n_nodes
         max_attempts = 50
 
         for attempt in xrange(max_attempts):
             # create an random adjacency matrix with given density
             adjmat = N.random.rand(n_nodes, n_nodes)
-            adjmat[adjmat >= (1.0-density)] = 1
+            adjmat[adjmat >= (1.0 - density)] = 1
             adjmat[adjmat < 1] = 0
-            
+
             # add required edges
-            for src,dest in required_edges:
+            for src, dest in required_edges:
                 adjmat[src][dest] = 1
 
             # remove prohibited edges
-            for src,dest in prohibited_edges:
+            for src, dest in prohibited_edges:
                 adjmat[src][dest] = 0
 
             # remove self-loop edges (those along the diagonal)
-            adjmat = N.invert(N.identity(n_nodes).astype(bool))*adjmat
-            
+            adjmat = N.invert(N.identity(n_nodes).astype(bool)) * adjmat
+
             # set the adjaceny matrix and check for acyclicity
             net.edges.adjacency_matrix = adjmat.astype(bool)
 
@@ -399,11 +392,10 @@ def random_network(nodes, required_edges=[], prohibited_edges=[]):
 
         # got here without finding a single acyclic network.
         # so try with a less dense network
-        return _randomize(density/2)
+        return _randomize(density / 2)
 
     # -----------------------
 
     net = Network(nodes)
     _randomize(net)
     return net
-

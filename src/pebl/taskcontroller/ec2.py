@@ -1,17 +1,13 @@
 """Classes and functions for running tasks on Amazon's EC2"""
 
-import time
-import os.path
-import shutil 
-import tempfile
-import sys
-
-from pebl import config, result
-from pebl.taskcontroller.ipy1 import IPython1Controller, IPython1DeferredResult
+from pebl import config
 from pebl.taskcontroller import ec2ipy1
+from pebl.taskcontroller.ipy1 import IPython1Controller, IPython1DeferredResult
+
 
 class EC2DeferredResult(IPython1DeferredResult):
     pass
+
 
 class EC2Controller(IPython1Controller):
     _params = (
@@ -48,7 +44,7 @@ class EC2Controller(IPython1Controller):
         self.ec2.remote_all("cd /usr/local/src/pebl; svn update; python setup.py install")
 
         self.ec2.start_ipython1(engine_on_controller=True)
-        self.ipy1taskcontroller = IPython1Controller(self.ec2.task_controller_url) 
+        self.ipy1taskcontroller = IPython1Controller(self.ec2.task_controller_url)
 
     def stop(self):
         self.ec2.terminate_instances()
@@ -61,4 +57,3 @@ class EC2Controller(IPython1Controller):
 
     def run(self, tasks):
         return self.ipy1taskcontroller.run(tasks)
-

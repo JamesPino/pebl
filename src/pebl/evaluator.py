@@ -1,14 +1,13 @@
 """Classes and functions for efficiently evaluating networks."""
 
-from math import log
 import random
-
-import numpy as N
+from math import log
 
 from pebl import data, cpd, prior, config, network
 from pebl.util import *
 
 N.random.seed()
+
 
 #
 # Exceptions
@@ -52,8 +51,8 @@ class LocalscoreCache(object):
         _cache = self._cache
         _maxsize = self.cachesize
 
-        index = tuple([node] +  parents)
-        
+        index = tuple([node] + parents)
+
         # get from cache or compute
         try:
             score = _cache[index]
@@ -84,9 +83,8 @@ class LocalscoreCache(object):
                         _queue.append(k)
                     else:
                         _refcount[k] -= 1
-            
-        return score
 
+        return score
 
 
 #
@@ -101,11 +99,10 @@ class NetworkEvaluator(object):
     """
 
     def __init__(self, data_, network_, prior_=None, localscore_cache=None):
-
         self.network = network_
         self.data = data_
         self.prior = prior_ or prior.NullPrior()
-        
+
         self.datavars = range(self.data.variables.size)
         self.score = None
         self._localscore = localscore_cache or LocalscoreCache(self)
@@ -117,15 +114,14 @@ class NetworkEvaluator(object):
     def _globalscore(self, localscores):
         # log(P(M|D)) +  log(P(M)) == likelihood + prior
         return N.sum(localscores) + self.prior.loglikelihood(self.network)
-    
+
     def _cpd(self, node, parents):
-        #return cpd.MultinomialCPD(
-            #self.data.subset(
-                #[node] + parents,            
-                #N.where(self.data.interventions[:,node] == False)[0])) 
+        # return cpd.MultinomialCPD(
+        # self.data.subset(
+        # [node] + parents,
+        # N.where(self.data.interventions[:,node] == False)[0]))
         return cpd.MultinomialCPD(
             self.data._subset_ni_fast([node] + parents))
-
 
     def _score_network_core(self):
         # in this implementation, we score all nodes (even if that means
@@ -156,14 +152,14 @@ class NetworkEvaluator(object):
         self.network.edges.add_many(add)
         self.network.edges.remove_many(remove)
         return self.score_network()
-    
-    def randomize_network(self): 
+
+    def randomize_network(self):
         """Randomize the network edges."""
 
         self.network = network.random_network(self.network.nodes)
         return self.score_network()
 
-    def clear_network(self):     
+    def clear_network(self):
         """Clear all edges from the network."""
 
         self.network.edges.clear()
@@ -189,13 +185,13 @@ class SmartNetworkEvaluator(NetworkEvaluator):
 
         """
 
-        super(SmartNetworkEvaluator, self).__init__(data_, network_, prior_, 
+        super(SmartNetworkEvaluator, self).__init__(data_, network_, prior_,
                                                     localscore_cache)
 
         # can't use this with missing data
-        #if self.data.missing.any():
-            #    msg = "Cannot use the SmartNetworkEvaluator with missing data."
-            #raise Exception(msg)
+        # if self.data.missing.any():
+        #    msg = "Cannot use the SmartNetworkEvaluator with missing data."
+        # raise Exception(msg)
 
         # these represent that state that we intelligently manage
         self.localscores = N.zeros((self.data.variables.size), dtype=float)
@@ -207,20 +203,20 @@ class SmartNetworkEvaluator(NetworkEvaluator):
     #
     def _backup_state(self, added, removed):
         self.saved_state = (
-            self.score,                     # saved score
-            #[(n,self.localscores[n]) for n in self.dirtynodes],
-            self.localscores.copy(),        # saved localscores
-            added,                          # edges added
-            removed                         # edges removed
+            self.score,  # saved score
+            # [(n,self.localscores[n]) for n in self.dirtynodes],
+            self.localscores.copy(),  # saved localscores
+            added,  # edges added
+            removed  # edges removed
         )
 
     def _restore_state(self):
         if self.saved_state:
             self.score, self.localscores, added, removed = self.saved_state
-            #self.score, changedscores, added, removed = self.saved_state
-        
-        #for n,score in changedscores:
-            #self.localscores[n] = score
+            # self.score, changedscores, added, removed = self.saved_state
+
+            # for n,score in changedscores:
+            # self.localscores[n] = score
 
         self.network.edges.add_many(removed)
         self.network.edges.remove_many(added)
@@ -236,7 +232,7 @@ class SmartNetworkEvaluator(NetworkEvaluator):
         parents = self.network.edges.parents
         for node in self.dirtynodes:
             self.localscores[node] = self._localscore(node, parents(node))
-        
+
         self.dirtynodes = set()
         self.score = self._globalscore(self.localscores)
 
@@ -245,7 +241,7 @@ class SmartNetworkEvaluator(NetworkEvaluator):
     def _update_dirtynodes(self, add, remove):
         # given the edges being added and removed, determine nodes to rescore
         # with fully observed data, only the parensets of edge destinations have changed
-        self.dirtynodes.update(set(unzip(add+remove, 1)))
+        self.dirtynodes.update(set(unzip(add + remove, 1)))
 
     #
     # Public Interface
@@ -263,9 +259,9 @@ class SmartNetworkEvaluator(NetworkEvaluator):
             remove = [edge for edge in self.network.edges if edge not in net.edges]
         else:
             add = remove = []
-        
+
         return self.alter_network(add, remove)
-    
+
     def alter_network(self, add=[], remove=[]):
         """Alter the network while retaining the ability to *quickly* undo the changes."""
 
@@ -274,7 +270,7 @@ class SmartNetworkEvaluator(NetworkEvaluator):
         #   if edge e is in `add`, `remove` and `self.network`, 
         #   it should exist in the new network. (the add and remove cancel out.
         self.network.edges.remove_many(remove)
-        self.network.edges.add_many(add)    
+        self.network.edges.add_many(add)
 
         # check whether changes lead to valid DAG (raise error if they don't)
         affected_nodes = set(unzip(add, 1))
@@ -282,8 +278,7 @@ class SmartNetworkEvaluator(NetworkEvaluator):
             self.network.edges.remove_many(add)
             self.network.edges.add_many(remove)
             raise CyclicNetworkError()
-        
-        
+
         # accept changes: 
         #   1) determine dirtynodes
         #   2) backup state
@@ -293,7 +288,7 @@ class SmartNetworkEvaluator(NetworkEvaluator):
         self.score = self._score_network_core()
 
         return self.score
-       
+
     def randomize_network(self):
         """Randomize the network edges."""
 
@@ -371,8 +366,8 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
         )
     )
 
-    def __init__(self, data_, network_, prior_=None, localscore_cache=None, 
-                 **options): 
+    def __init__(self, data_, network_, prior_=None, localscore_cache=None,
+                 **options):
         """Create a network evaluator for use with missing values.
 
         This evaluator uses a Gibb's sampler for sampling over the space of
@@ -391,10 +386,10 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
         """
 
         super(MissingDataNetworkEvaluator, self).__init__(data_, network_,
-                                                         prior_)
+                                                          prior_)
         self._localscore = None  # no cache w/ missing data
         config.setparams(self, options)
-        
+
     def _init_state(self):
         parents = self.network.edges.parents
 
@@ -402,13 +397,13 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
         self.localscores = N.array([cpd.loglikelihood() for cpd in self.cpds], dtype=float)
         self.data_dirtynodes = set(self.datavars)
 
-	def _update_dirtynodes(self, add, remove):
-		# With hidden nodes:
-		# 	1. dirtynode calculation is more expensive (need to look beyond 
-		#      markov blanket).
-		# 	2. time spent rescoring observed nodes is insignificant compared 
-		#      to scoring hidden/missing nodes.
-		self.dirtynodes = set(self.datavars)
+        def _update_dirtynodes(self, add, remove):
+            # With hidden nodes:
+            # 	1. dirtynode calculation is more expensive (need to look beyond
+            #      markov blanket).
+            # 	2. time spent rescoring observed nodes is insignificant compared
+            #      to scoring hidden/missing nodes.
+            self.dirtynodes = set(self.datavars)
 
     def _score_network_with_tempdata(self):
         # update localscore for data_dirtynodes, then calculate globalscore.
@@ -421,7 +416,7 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
 
     def _alter_data(self, row, col, value):
         oldrow = self.data.observations[row].copy()
-        self.data.observations[row,col] = value
+        self.data.observations[row, col] = value
 
         # update data_dirtynodes
         affected_nodes = set(self.network.edges.children(col) + [col])
@@ -430,10 +425,10 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
         # update cpds
         for node in affected_nodes:
             datacols = [node] + self.network.edges.parents(node)
-            if not self.data.interventions[row,node]:
+            if not self.data.interventions[row, node]:
                 self.cpds[node].replace_data(
-                        oldrow[datacols],
-                        self.data.observations[row][datacols])
+                    oldrow[datacols],
+                    self.data.observations[row][datacols])
 
     def _alter_data_and_score(self, row, col, value):
         self._alter_data(row, col, value)
@@ -442,7 +437,7 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
     def _calculate_score(self, chosenscores, gibbs_state):
         # discard the burnin period scores and average the rest
         burnin_period = self.burnin * \
-                        self.data.missing[self.data.missing==True].size
+                        self.data.missing[self.data.missing == True].size
 
         if gibbs_state:
             # resuming from a previous gibbs run. so, no burnin required.
@@ -457,7 +452,7 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
             # this occurs when gibbs iterations were less than burnin period.
             scoresum = chosenscores[-1]
             numscores = 1
-        
+
         score = scoresum - log(numscores)
         return score, numscores
 
@@ -466,8 +461,8 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
             assignedvals = gibbs_state.assignedvals
         else:
             arities = [v.arity for v in self.data.variables]
-            assignedvals = [random.randint(0, arities[col]-1) for row,col in indices]
-        
+            assignedvals = [random.randint(0, arities[col] - 1) for row, col in indices]
+
         self.data.observations[unzip(indices)] = assignedvals
 
     def score_network(self, net=None, gibbs_state=None):
@@ -504,7 +499,7 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
 
     def _score_network_core(self):
         # create some useful lists and local variables
-        missing_indices = unzip(N.where(self.data.missing==True))
+        missing_indices = unzip(N.where(self.data.missing == True))
         num_missingvals = len(missing_indices)
         n = num_missingvals
         max_iterations = eval(self.max_iterations)
@@ -520,13 +515,13 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
         #    2) using a probability wheel, sample a value from the possible values
         iters = 0
         while iters < max_iterations:
-            for row,col in missing_indices:
+            for row, col in missing_indices:
                 scores = [self._alter_data_and_score(row, col, val) \
-                             for val in xrange(arities[col])]
+                          for val in xrange(arities[col])]
                 chosenval = logscale_probwheel(range(len(scores)), scores)
                 self._alter_data(row, col, chosenval)
                 chosenscores.append(scores[chosenval])
-            
+
             iters += num_missingvals
 
         self.chosenscores = N.array(chosenscores)
@@ -534,8 +529,8 @@ class MissingDataNetworkEvaluator(SmartNetworkEvaluator):
 
         # save state of gibbs sampler
         self.gibbs_state = GibbsSamplerState(
-            avgscore=self.score, 
-            numscores=numscores, 
+            avgscore=self.score,
+            numscores=numscores,
             assignedvals=self.data.observations[unzip(missing_indices)].tolist()
         )
 
@@ -561,19 +556,19 @@ class MissingDataExactNetworkEvaluator(MissingDataNetworkEvaluator):
         about arguments.
 
         """
-        
+
         # create some useful lists and local variables
-        missing_indices = unzip(N.where(self.data.missing==True))
+        missing_indices = unzip(N.where(self.data.missing == True))
         num_missingvals = len(missing_indices)
-        possiblevals = [range(self.data.variables[col].arity) for row,col in missing_indices]
+        possiblevals = [range(self.data.variables[col].arity) for row, col in missing_indices]
 
         self._init_state()
-        
+
         # Enumerate through all possible values for the missing data (using
         # the cartesian_product function) and score.
         scores = []
         for assignedvals in cartesian_product(possiblevals):
-            for (row,col),val in zip(missing_indices, assignedvals):
+            for (row, col), val in zip(missing_indices, assignedvals):
                 self._alter_data(row, col, val)
             scores.append(self._score_network_with_tempdata())
 
@@ -600,14 +595,14 @@ class MissingDataMaximumEntropyNetworkEvaluator(MissingDataNetworkEvaluator):
         arity = self.data.variables[var].arity
         numsamples = self.data.samples.size
 
-        missingvals = self.data.missing[:,var]
+        missingvals = self.data.missing[:, var]
         missingsamples = N.where(missingvals == True)[0]
         observedsamples = N.where(missingvals == False)[0]
-        
+
         # maximum entropy discretization for *all* samples for this variable
-        numeach = numsamples/arity
-        assignments = flatten([val]*numeach for val in xrange(arity))
-        for i in xrange(numsamples - len(assignments)):  
+        numeach = numsamples / arity
+        assignments = flatten([val] * numeach for val in xrange(arity))
+        for i in xrange(numsamples - len(assignments)):
             assignments.append(i)
 
         # remove the values of the observed samples
@@ -615,24 +610,22 @@ class MissingDataMaximumEntropyNetworkEvaluator(MissingDataNetworkEvaluator):
             assignments.remove(val)
 
         N.random.shuffle(assignments)
-        self.data.observations[missingsamples,var] = assignments
-
+        self.data.observations[missingsamples, var] = assignments
 
     def _assign_missingvals(self, missingvars, gibbs_state):
         if gibbs_state:
             assignedvals = gibbs_state.assignedvals
-            self.data.observations[N.where(self.data.missing==True)] = assignedvals
+            self.data.observations[N.where(self.data.missing == True)] = assignedvals
         else:
             for var in missingvars:
                 self._do_maximum_entropy_assignment(var)
- 
 
     def _swap_data(self, var, sample1, choices_for_sample2):
         val1 = self.data.observations[sample1, var]
-        
+
         # try swapping till we get a different value (but don't keep trying
         # forever)
-        for i in xrange(len(choices_for_sample2)/2):
+        for i in xrange(len(choices_for_sample2) / 2):
             sample2 = random.choice(choices_for_sample2)
             val2 = self.data.observations[sample2, var]
             if val1 != val2:
@@ -640,12 +633,12 @@ class MissingDataMaximumEntropyNetworkEvaluator(MissingDataNetworkEvaluator):
 
         self._alter_data(sample1, var, val2)
         self._alter_data(sample2, var, val1)
-        
+
         return (sample1, var, val1, sample2, var, val2)
-    
+
     def _undo_swap(self, row1, col1, val1, row2, col2, val2):
         self._alter_data(row1, col1, val1)
-        self._alter_data(row2, col2, val2) 
+        self._alter_data(row2, col2, val2)
 
     def _score_network_core(self):
         # create some useful lists and counts
@@ -653,11 +646,11 @@ class MissingDataMaximumEntropyNetworkEvaluator(MissingDataNetworkEvaluator):
         n = num_missingvals
         max_iterations = eval(self.max_iterations)
         chosenscores = []
-        
+
         # determine missing vars and samples
-        missingvars = [v for v in self.datavars if self.data.missing[:,v].any()]
-        missingsamples = [N.where(self.data.missing[:,v] == True)[0] \
-                            for v in self.datavars]
+        missingvars = [v for v in self.datavars if self.data.missing[:, v].any()]
+        missingsamples = [N.where(self.data.missing[:, v] == True)[0] \
+                          for v in self.datavars]
 
         self._assign_missingvals(missingvars, self.gibbs_state)
         self._init_state()
@@ -665,13 +658,13 @@ class MissingDataMaximumEntropyNetworkEvaluator(MissingDataNetworkEvaluator):
         # iteratively swap data randomly amond samples of a var and score
         iters = 0
         while iters < max_iterations:
-            for var in missingvars:  
+            for var in missingvars:
                 for sample in missingsamples[var]:
                     score0 = self._score_network_with_tempdata()
-                    swap = self._swap_data(var, sample, missingsamples[var]) 
+                    swap = self._swap_data(var, sample, missingsamples[var])
                     score1 = self._score_network_with_tempdata()
-                    chosenval = logscale_probwheel([0,1], [score0, score1])
-                    
+                    chosenval = logscale_probwheel([0, 1], [score0, score1])
+
                     if chosenval == 0:
                         self._undo_swap(*swap)
                         chosenscores.append(score0)
@@ -682,17 +675,18 @@ class MissingDataMaximumEntropyNetworkEvaluator(MissingDataNetworkEvaluator):
 
         self.chosenscores = N.array(chosenscores)
         self.score, numscores = self._calculate_score(self.chosenscores, self.gibbs_state)
-        
+
         # save state of gibbs sampler
         self.gibbs_state = GibbsSamplerState(
-            avgscore=self.score, 
-            numscores=numscores, 
+            avgscore=self.score,
+            numscores=numscores,
             assignedvals=self.data.observations[
-                N.where(self.data.missing==True)
+                N.where(self.data.missing == True)
             ].tolist()
         )
-        
+
         return self.score
+
 
 #
 # Parameters
@@ -718,6 +712,7 @@ _missingdata_evaluators = {
     'maxentropy_gibbs': MissingDataMaximumEntropyNetworkEvaluator
 }
 
+
 def fromconfig(data_=None, network_=None, prior_=None):
     """Create an evaluator based on configuration parameters.
     
@@ -735,4 +730,3 @@ def fromconfig(data_=None, network_=None, prior_=None):
         return e(data_, network_, prior_)
     else:
         return SmartNetworkEvaluator(data_, network_, prior_)
-

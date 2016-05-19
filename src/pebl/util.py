@@ -1,10 +1,11 @@
 """Miscellaneous utility functions."""
 
-import numpy as N
 import math
-import os.path
-from copy import copy
 from collections import deque
+from copy import copy
+
+import numpy as N
+
 
 def as_list(c):
     """Ensures that the result is a list.
@@ -15,7 +16,7 @@ def as_list(c):
     
     """
 
-    if isinstance(c, (list,tuple,set)):
+    if isinstance(c, (list, tuple, set)):
         return c
     elif c is None:
         return []
@@ -25,7 +26,7 @@ def as_list(c):
 
 def cond(condition, expr1, expr2):
     """Marked for deletion.. Python2.5 provides this."""
-    
+
     if condition:
         return expr1
     else:
@@ -50,7 +51,8 @@ def normalize(lst):
     if not isinstance(lst, N.ndarray):
         lst = N.array(lst)
 
-    return lst/lst.sum()
+    return lst / lst.sum()
+
 
 def rescale_logvalues(lst):
     """Rescales a list of log values by setting max value to 0.0
@@ -62,12 +64,15 @@ def rescale_logvalues(lst):
     """
 
     if not isinstance(lst, N.ndarray):
-        lst = N.array(lst) 
-    
+        lst = N.array(lst)
+
     return lst - lst.max()
+
 
 _LogZero = 1.0e-100
 _MinLogExp = math.log(_LogZero);
+
+
 def logadd(x, y):
     """Adds two log values.
     
@@ -86,12 +91,13 @@ def logadd(x, y):
     else:
         return logProb
 
+
 def logsum(lst):
     """Sums a list of log values, ensuring accuracy."""
-    
+
     if not isinstance(lst, N.ndarray):
         lst = N.array(lst)
-    
+
     maxval = lst.max()
     lst = lst - maxval
     return reduce(logadd, lst) + maxval
@@ -108,7 +114,7 @@ def autoassign(self, locals):
 
     """
     for (key, value) in locals.iteritems():
-        if key == 'self': 
+        if key == 'self':
             continue
         setattr(self, key, value)
 
@@ -120,12 +126,12 @@ def unzip(l, *jj):
     specified, all items are unzipped.
 
     """
-	
-    if jj==():
-	    jj=range(len(l[0]))
-    rl = [[li[j] for li in l] for j in jj] # a list of lists
-    if len(rl)==1:
-        rl=rl[0] #convert list of 1 list to a list
+
+    if jj == ():
+        jj = range(len(l[0]))
+    rl = [[li[j] for li in l] for j in jj]  # a list of lists
+    if len(rl) == 1:
+        rl = rl[0]  # convert list of 1 list to a list
     return rl
 
 
@@ -133,8 +139,7 @@ def nestediter(lst1, lst2):
     """A syntactic shortform for doing nested loops."""
     for i in lst1:
         for j in lst2:
-            yield (i,j)
-
+            yield (i, j)
 
 
 def cartesian_product(list_of_lists):
@@ -148,7 +153,7 @@ def cartesian_product(list_of_lists):
     
     """
 
-    head,rest = list_of_lists[0], list_of_lists[1:]
+    head, rest = list_of_lists[0], list_of_lists[1:]
     if len(rest) is 0:
         for val in head:
             yield (val,)
@@ -160,7 +165,7 @@ def cartesian_product(list_of_lists):
 
 def probwheel(items, weights):
     """Randomly select an item from a weighted list of items."""
-    
+
     # convert to numpy array and normalize
     weights = normalize(N.array(weights))
 
@@ -170,7 +175,7 @@ def probwheel(items, weights):
     for item, edge in zip(items, binedges):
         if randval <= edge:
             return item
-    
+
     # should never reach here.. but might due to rounding errors.
     return items[-1]
 
@@ -191,13 +196,13 @@ def entropy_of_list(lst):
     unique_values = N.unique(lst)
     unique_counts = N.array([float(len([i for i in lst if i == unique_val])) for unique_val in unique_values])
     total = N.sum(unique_counts)
-    probs = unique_counts/total
+    probs = unique_counts / total
 
     # remove probabilities==0 because log(0) = -Inf and causes problems.
     # This is ok because p*log(p) == 0*log(0) == 0 so removing these doesn't affect the final sum.
-    probs = probs[probs>0] 
+    probs = probs[probs > 0]
 
-    return sum(-probs*N.log(probs))
+    return sum(-probs * N.log(probs))
 
 
 def edit_distance(network1, network2):
@@ -227,13 +232,14 @@ def edit_distance(network1, network2):
             edges2.remove(inverse(edge))
         else:
             dist += 1
-    
+
     # edges2 now contains all edges not in edges1.
     dist += len(edges2)
 
     return dist
 
-def levenshtein(a,b):
+
+def levenshtein(a, b):
     """Calculates the Levenshtein distance between *strings* a and b.
 
     from http://hetland.org/coding/python/levenshtein.py
@@ -242,34 +248,35 @@ def levenshtein(a,b):
     n, m = len(a), len(b)
     if n > m:
         # Make sure n <= m, to use O(min(n,m)) space
-        a,b = b,a
-        n,m = m,n
-        
-    current = range(n+1)
-    for i in range(1,m+1):
-        previous, current = current, [i]+[0]*n
-        for j in range(1,n+1):
-            add, delete = previous[j]+1, current[j-1]+1
-            change = previous[j-1]
-            if a[j-1] != b[i-1]:
+        a, b = b, a
+        n, m = m, n
+
+    current = range(n + 1)
+    for i in range(1, m + 1):
+        previous, current = current, [i] + [0] * n
+        for j in range(1, n + 1):
+            add, delete = previous[j] + 1, current[j - 1] + 1
+            change = previous[j - 1]
+            if a[j - 1] != b[i - 1]:
                 change = change + 1
             current[j] = min(add, delete, change)
-            
+
     return current[n]
 
 
 def extended_property(func):
-  """Function decorator for defining property attributes
+    """Function decorator for defining property attributes
 
-  The decorated function is expected to return a dictionary
-  containing one or more of the following pairs:
+    The decorated function is expected to return a dictionary
+    containing one or more of the following pairs:
 
-      * fget - function for getting attribute value
-      * fset - function for setting attribute value
-      * fdel - function for deleting attribute
+        * fget - function for getting attribute value
+        * fset - function for setting attribute value
+        * fdel - function for deleting attribute
 
-  """
-  return property(doc=func.__doc__, **func())
+    """
+    return property(doc=func.__doc__, **func())
+
 
 def lru_cache(maxsize):
     '''Decorator applying a least-recently-used cache with the given maximum size.
@@ -279,15 +286,21 @@ def lru_cache(maxsize):
 
     from http://code.activestate.com/recipes/498245/
     '''
+
     def decorating_function(f):
-        cache = {}              # mapping of args to results
-        queue = deque()         # order that keys have been accessed
-        refcount = {}           # number of times each key is in the access queue
+        cache = {}  # mapping of args to results
+        queue = deque()  # order that keys have been accessed
+        refcount = {}  # number of times each key is in the access queue
+
         def wrapper(*args):
-            
+
             # localize variable access (ugly but fast)
-            _cache=cache; _len=len; _refcount=refcount; _maxsize=maxsize
-            queue_append=queue.append; queue_popleft = queue.popleft
+            _cache = cache;
+            _len = len;
+            _refcount = refcount;
+            _maxsize = maxsize
+            queue_append = queue.append;
+            queue_popleft = queue.popleft
 
             # get cache entry or compute if not found
             try:
@@ -308,7 +321,7 @@ def lru_cache(maxsize):
                 if not _refcount[k]:
                     del _cache[k]
                     del _refcount[k]
-    
+
             # Periodically compact the queue by duplicate keys
             if _len(queue) > _maxsize * 4:
                 for i in [None] * _len(queue):
@@ -320,9 +333,10 @@ def lru_cache(maxsize):
                 assert len(queue) == len(cache) == len(refcount) == sum(refcount.itervalues())
 
             return result
+
         wrapper.__doc__ = f.__doc__
         wrapper.__name__ = f.__name__
         wrapper.hits = wrapper.misses = 0
         return wrapper
-    return decorating_function
 
+    return decorating_function

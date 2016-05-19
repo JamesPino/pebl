@@ -22,7 +22,7 @@ class TestEdgeSet:
 
     def test_remove(self):
         self.edges.remove((0,2))
-        assert set(self.edges) == set([(0,5), (1,2)])
+        assert set(self.edges) == {(0, 5), (1, 2)}
 
     def test_remove_many(self):
         self.edges.remove_many([(0,2), (0,5)])

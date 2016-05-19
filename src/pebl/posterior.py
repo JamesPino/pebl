@@ -1,12 +1,5 @@
 """Class for representing posterior distribution."""
 
-import math
-from copy import deepcopy
-from itertools import izip
-
-import pydot
-import numpy as N
-
 from pebl import network
 from pebl.util import *
 
@@ -43,15 +36,14 @@ class Posterior(object):
         """
 
         if not sortedscores:
-            mycmp = lambda x,y: cmp(x[1],y[1])
-            adjmat_and_scores = sorted(zip(adjacency_matrices, scores), 
+            mycmp = lambda x, y: cmp(x[1], y[1])
+            adjmat_and_scores = sorted(zip(adjacency_matrices, scores),
                                        cmp=mycmp, reverse=True)
             adjacency_matrices, scores = unzip(adjmat_and_scores)
 
         self.adjacency_matrices = N.array(adjacency_matrices)
         self.scores = N.array(scores)
         self.nodes = nodes
-
 
     #
     # Public interface
@@ -63,7 +55,7 @@ class Posterior(object):
         features[features >= threshold] = 1
         features[features < threshold] = 0
         features = features.astype(bool)
-        
+
         return network.Network(self.nodes, features)
 
     @property
@@ -74,19 +66,19 @@ class Posterior(object):
         # but since scores are in log, 
         # entropy = -exp(scores)*scores
         lscores = rescale_logvalues(self.scores)
-        return -N.sum(N.exp(lscores)*lscores)
+        return -N.sum(N.exp(lscores) * lscores)
 
     @property
     def consensus_matrix(self):
         norm_scores = normalize(N.exp(rescale_logvalues(self.scores)))
-        return sum(n*s for n,s in zip(self.adjacency_matrices, norm_scores))
+        return sum(n * s for n, s in zip(self.adjacency_matrices, norm_scores))
 
     #
     # Special interfaces
     #
     def __iter__(self):
         """Iterate over the networks in the posterior in sorted order."""
-        for adjmat,score in zip(self.adjacency_matrices, self.scores):
+        for adjmat, score in zip(self.adjacency_matrices, self.scores):
             net = network.Network(self.nodes, adjmat)
             net.score = score
             yield net
@@ -95,7 +87,7 @@ class Posterior(object):
         """Retrieve a specific network (and score) from the posterior."""
         if isinstance(key, slice):
             return self.__getslice__(self, key.start, key.stop)
-        
+
         net = network.Network(self.nodes, self.adjacency_matrices[key])
         net.score = self.scores[key]
         return net
@@ -103,9 +95,9 @@ class Posterior(object):
     def __getslice__(self, i, j):
         """Retrieve a subset (as a new posterior object) of the networks."""
         return Posterior(
-                    self.nodes, 
-                    self.adjacency_matrices[i:j], self.scores[i:j]
-                )
+            self.nodes,
+            self.adjacency_matrices[i:j], self.scores[i:j]
+        )
 
     def __len__(self):
         """Return the number of networks in this posterior distribution."""
@@ -126,5 +118,3 @@ def from_sorted_scored_networks(nodes, networks):
         [n.edges.adjacency_matrix for n in networks],
         [n.score for n in networks]
     )
-
-

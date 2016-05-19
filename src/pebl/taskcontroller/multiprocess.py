@@ -1,9 +1,9 @@
 """Module providing a taskcontroller than runs tasks over multiple processes."""
 
-import os, os.path
 import cPickle
-import thread, time
-import shutil 
+import os
+import os.path
+import shutil
 import tempfile
 from copy import copy
 
@@ -12,18 +12,19 @@ from pebl.taskcontroller.base import _BaseController
 
 PEBL = "pebl"
 
+
 class MultiProcessController(_BaseController):
     #
     # Parameters
     # 
     _params = (
-            config.IntParameter(
+        config.IntParameter(
             'multiprocess.poolsize',
             'Number of processes to run concurrently (0 means no limit)',
             default=0
         )
     )
-        
+
     def __init__(self, poolsize=None):
         """Creates a task controller that runs taks on multiple processes.
 
@@ -41,7 +42,7 @@ class MultiProcessController(_BaseController):
         tasks will be queued.
 
         """
-        tasks = copy(tasks) # because we do tasks.pop() below..
+        tasks = copy(tasks)  # because we do tasks.pop() below..
         numtasks = len(tasks)
         poolsize = self.poolsize or numtasks
         running = {}
@@ -50,16 +51,16 @@ class MultiProcessController(_BaseController):
 
         while len(done) < numtasks:
             # submit tasks (if below poolsize and tasks remain)
-            for i in xrange(min(poolsize-len(running), len(tasks))):
+            for i in xrange(min(poolsize - len(running), len(tasks))):
                 task = tasks.pop()
                 task.cwd = tempfile.mkdtemp()
                 cPickle.dump(task, open(opjoin(task.cwd, 'task.pebl'), 'w'))
-                pid = os.spawnlp(os.P_NOWAIT, PEBL, PEBL, "runtask", 
+                pid = os.spawnlp(os.P_NOWAIT, PEBL, PEBL, "runtask",
                                  opjoin(task.cwd, "task.pebl"))
                 running[pid] = task
-            
+
             # wait for any child process to finish
-            pid,status = os.wait() 
+            pid, status = os.wait()
             done.append(running.pop(pid, None))
 
         results = [result.fromfile(opjoin(t.cwd, 'result.pebl')) for t in done]
@@ -67,7 +68,7 @@ class MultiProcessController(_BaseController):
         # to make the results look like deferred results
         for r in results:
             r.taskid = 0
-        
+
         # clean up 
         for t in done:
             shutil.rmtree(t.cwd)

@@ -2,9 +2,9 @@
 
 import time
 
-from pebl import network, result, evaluator
-from pebl.util import *
+from pebl import network, result
 from pebl.learner.base import *
+
 
 class GreedyLearnerStatistics:
     def __init__(self):
@@ -18,11 +18,12 @@ class GreedyLearnerStatistics:
     def runtime(self):
         return time.time() - self.start_time
 
+
 class GreedyLearner(Learner):
     #
     # Parameters
     #
-    _params =  (
+    _params = (
         config.IntParameter(
             'greedy.max_iterations',
             """Maximum number of iterations to run.""",
@@ -36,7 +37,7 @@ class GreedyLearner(Learner):
         config.IntParameter(
             'greedy.max_unimproved_iterations',
             """Maximum number of iterations without score improvement before
-            a restart.""", 
+            a restart.""",
             default=500
         ),
         config.StringParameter(
@@ -74,7 +75,7 @@ class GreedyLearner(Learner):
         config.setparams(self, options)
         if not isinstance(self.seed, network.Network):
             self.seed = network.Network(self.data.variables, self.seed)
-        
+
     def run(self):
         """Run the learner.
 
@@ -88,7 +89,7 @@ class GreedyLearner(Learner):
             _stop = self._stop_after_iterations
         else:
             _stop = self._stop_after_time
-            
+
         self.stats = GreedyLearnerStatistics()
         self.result = result.LearnerResult(self)
         self.evaluator = evaluator.fromconfig(self.data, self.seed, self.prior)
@@ -97,7 +98,7 @@ class GreedyLearner(Learner):
         first = True
         self.result.start_run()
         while not _stop():
-            self._run_without_restarts(_stop, self._restart, 
+            self._run_without_restarts(_stop, self._restart,
                                        randomize_net=(not first))
             first = False
         self.result.stop_run()
@@ -110,7 +111,7 @@ class GreedyLearner(Learner):
 
         if randomize_net:
             self.evaluator.randomize_network()
-         
+
         # set the default best score
         self.stats.best_score = self.evaluator.score_network()
 
@@ -122,7 +123,7 @@ class GreedyLearner(Learner):
                 curscore = self._alter_network_randomly_and_score()
             except CannotAlterNetworkException:
                 return
-            
+
             self.result.add_network(self.evaluator.network, curscore)
 
             if curscore <= self.stats.best_score:
@@ -144,4 +145,3 @@ class GreedyLearner(Learner):
 
     def _restart(self):
         return self.stats.unimproved_iterations >= self.max_unimproved_iterations
-

@@ -4,6 +4,7 @@ import numpy as N
 
 NEGINF = -N.inf
 
+
 #
 # Prior Models
 #
@@ -34,26 +35,26 @@ class Prior(object):
 
     """
 
-    def __init__(self, num_nodes, energy_matrix=None, required_edges=[], 
+    def __init__(self, num_nodes, energy_matrix=None, required_edges=[],
                  prohibited_edges=[], constraints=[], weight=1.0):
-        
+
         self.energy_matrix = energy_matrix
-        
+
         # mustexist are edges that must exist. They are set as zero and the
         # rest as one. We can then perfrom a bitwise-or with the adjacency
         # matrix and if the required edges are not in the adjacency matrix, the
         # result will not be all ones.
         self.mustexist = N.ones((num_nodes, num_nodes), dtype=bool)
-        for src,dest in required_edges:
-            self.mustexist[src,dest] = 0
+        for src, dest in required_edges:
+            self.mustexist[src, dest] = 0
 
         # mustnotexist are edges that cannot be present.  They are set as one
         # and the rest as zero. We can then perform a bitwise-and with the
         # adjacency matrix and if the specified edges are present, the result
         # will not be all zeros.
         self.mustnotexist = N.zeros((num_nodes, num_nodes), dtype=bool)
-        for src,dest in prohibited_edges:
-            self.mustnotexist[src,dest] = 1
+        for src, dest in prohibited_edges:
+            self.mustnotexist[src, dest] = 1
 
         self.constraints = constraints
         self.weight = weight
@@ -81,7 +82,7 @@ class Prior(object):
         # if any of the mustexist or mustnotexist constraints are violated,
         # return negative infinity
         if (not (adjmat | self.mustexist).all()) or \
-           (adjmat & self.mustnotexist).any():
+                (adjmat & self.mustnotexist).any():
             return NEGINF
 
         # if any custom constraints are violated, return negative infinity
@@ -90,7 +91,7 @@ class Prior(object):
 
         loglike = 0.0
         if self.energy_matrix != None:
-            energy = N.sum(adjmat * self.energy_matrix) 
+            energy = N.sum(adjmat * self.energy_matrix)
             loglike = -self.weight * energy
 
         return loglike
@@ -101,7 +102,8 @@ class UniformPrior(Prior):
 
     def __init__(self, num_nodes, weight=1.0):
         energymat = N.ones((num_nodes, num_nodes)) * .5
-        super(UniformPrior, self).__init__(num_nodes, energymat, weight=weight) 
+        super(UniformPrior, self).__init__(num_nodes, energymat, weight=weight)
+
 
 class NullPrior(Prior):
     """A null prior which returns 0.0 for the loglikelihood.
@@ -120,6 +122,7 @@ class NullPrior(Prior):
 
     def loglikelihood(self, net):
         return 0.0
+
 
 def fromconfig():
     # TODO: implement this

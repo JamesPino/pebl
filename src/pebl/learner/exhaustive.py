@@ -1,8 +1,7 @@
 """Classes and functions for doing exhaustive learning."""
 
-from pebl import prior, config, evaluator, result, network
+from pebl import config, evaluator, result, network
 from pebl.learner.base import Learner
-from pebl.taskcontroller.base import Task
 
 
 class ListLearner(Learner):
@@ -13,7 +12,7 @@ class ListLearner(Learner):
         config.StringParameter(
             'listlearner.networks',
             """List of networks, one per line, in network.Network.as_string()
-            format.""", 
+            format.""",
             default=''
         )
     )
@@ -42,7 +41,7 @@ class ListLearner(Learner):
             self.result.add_network(net, self.evaluator.score_network(net))
         self.result.stop_run()
         return self.result
-    
+
     def split(self, count):
         """Split the learner into multiple learners.
 
@@ -53,15 +52,15 @@ class ListLearner(Learner):
 
         nets = list(self.networks)
         numnets = len(nets)
-        netspertask = numnets/count
+        netspertask = numnets / count
 
         # divide list into parts
-        indices = [[i,i+netspertask] for i in xrange(0,numnets,netspertask)]
+        indices = [[i, i + netspertask] for i in xrange(0, numnets, netspertask)]
         if len(indices) > count:
             indices.pop(-1)
-            indices[-1][1] = numnets-1
+            indices[-1][1] = numnets - 1
 
-        return [ListLearner(self.data, self.prior, nets[i:j])for i,j in indices]
+        return [ListLearner(self.data, self.prior, nets[i:j]) for i, j in indices]
 
     def __getstate__(self):
         # convert self.network from iterators or generators to a list

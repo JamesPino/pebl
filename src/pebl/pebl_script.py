@@ -1,11 +1,12 @@
-import sys
-import os, os.path
 import cPickle
+import os
+import os.path
+import sys
 
 # import everything to make sure that all config parameters get registered
-from pebl import config, data, network, learner, taskcontroller, result, prior, result, posterior
-from pebl.learner import greedy, simanneal, exhaustive
-#from pebl.taskcontroller import serial, multiprocess, ec2, xgrid
+from pebl import config, learner, taskcontroller, result
+
+# from pebl.taskcontroller import serial, multiprocess, ec2, xgrid
 
 USAGE = """
 Usage: %s <action> [<action parameters>]
@@ -27,6 +28,7 @@ viewhtml <resultfile> <outputdir>
 
 """ % os.path.basename(sys.argv[0])
 
+
 def usage(msg, exitcode=-1):
     print "Pebl: Python Environment for Bayesian Learning"
     print "----------------------------------------------"
@@ -36,13 +38,14 @@ def usage(msg, exitcode=-1):
     print USAGE
     sys.exit(exitcode)
 
+
 def main():
     """The pebl script.
     
     This is installed by setuptools as /usr/local/bin/pebl.
 
     """
-    
+
     if len(sys.argv) < 2:
         usage("Please specify the action.")
 
@@ -51,6 +54,7 @@ def main():
         action()
     else:
         usage("Action %s not found." % sys.argv[1])
+
 
 def run(configfile=None):
     try:
@@ -65,28 +69,31 @@ def run(configfile=None):
 
     controller = taskcontroller.fromconfig()
     results = controller.run(tasks)
-    
+
     merged_result = result.merge(results)
     if config.get('result.format') == 'html':
         merged_result.tohtml()
     else:
         merged_result.tofile()
 
+
 def runtask(picklefile=None):
     try:
         picklefile = picklefile or sys.argv[2]
     except:
         usage("Please specify a pickled task file.")
-   
-    outfile = os.path.join(os.path.dirname(picklefile), 'result.pebl')  
+
+    outfile = os.path.join(os.path.dirname(picklefile), 'result.pebl')
     picklestr = open(picklefile).read()
     result = runtask_picklestr(picklestr)
     result.tofile(outfile)
-    
+
+
 def runtask_picklestr(picklestr):
     learntask = cPickle.loads(picklestr)
     result = learntask.run()
     return result
+
 
 def viewhtml(resultfile=None, outdir=None):
     try:
@@ -97,7 +104,7 @@ def viewhtml(resultfile=None, outdir=None):
 
     cPickle.load(open(resultfile)).tohtml(outdir)
 
+
 # -----------------------------
 if __name__ == '__main__':
     main()
-

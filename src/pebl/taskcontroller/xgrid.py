@@ -1,16 +1,17 @@
-import time
-import os.path
-import shutil 
-import tempfile
 import cPickle
+import os.path
+import shutil
+import tempfile
+import time
 
 try:
     import xg
 except:
     xg = False
-    
+
 from pebl import config, result
 from pebl.taskcontroller.base import _BaseSubmittingController, DeferredResult
+
 
 class XgridDeferredResult(DeferredResult):
     def __init__(self, grid, task):
@@ -22,16 +23,16 @@ class XgridDeferredResult(DeferredResult):
     def result(self):
         tmpdir = tempfile.mkdtemp('pebl')
         self.job.results(
-            stdout = os.path.join(tmpdir, 'stdout'),
-            stderr = os.path.join(tmpdir, 'stderr'),
-            outdir = tmpdir
+            stdout=os.path.join(tmpdir, 'stdout'),
+            stderr=os.path.join(tmpdir, 'stderr'),
+            outdir=tmpdir
         )
         self.job.delete()
-        rst = result.fromfile(os.path.join(tmpdir,'result.pebl'))
-        shutil.rmtree(tmpdir)  
+        rst = result.fromfile(os.path.join(tmpdir, 'result.pebl'))
+        shutil.rmtree(tmpdir)
 
         return rst
- 
+
     @property
     def finished(self):
         return self.job.info(update=1).get('jobStatus') in ('Finished',)
@@ -97,11 +98,11 @@ class XgridController(_BaseSubmittingController):
         for task in tasks:
             task.cwd = tempfile.mkdtemp()
             cPickle.dump(task, open(os.path.join(task.cwd, 'task.pebl'), 'w'))
-            task.job = grid.submit(self.peblpath, 'runtask task.pebl', 
+            task.job = grid.submit(self.peblpath, 'runtask task.pebl',
                                    indir=task.cwd)
             drs.append(XgridDeferredResult(grid, task))
         return drs
-   
+
     def retrieve(self, deferred_results):
         drs = deferred_results
 
@@ -110,12 +111,11 @@ class XgridController(_BaseSubmittingController):
         # xgrid command line app
         done = []
         while drs:
-            for i,dr in enumerate(drs):
+            for i, dr in enumerate(drs):
                 if dr.finished:
                     done.append(drs.pop(i))
                     break  # modified drs, so break and re-iterate
             else:
                 time.sleep(self.pollinterval)
 
-        return [dr.result for dr in done] 
-
+        return [dr.result for dr in done]

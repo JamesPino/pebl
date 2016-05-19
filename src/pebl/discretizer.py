@@ -1,8 +1,10 @@
 """ Collection of data discretization algorithms."""
 
 import numpy as N
-from util import as_list
+
 import data
+from util import as_list
+
 
 def maximum_entropy_discretize(indata, includevars=None, excludevars=[], numbins=3):
     """Performs a maximum-entropy discretization of data in-place.
@@ -32,36 +34,34 @@ def maximum_entropy_discretize(indata, includevars=None, excludevars=[], numbins
     """
 
     # includevars can be an atom or list
-    includevars = as_list(includevars) 
-   
+    includevars = as_list(includevars)
+
     # determine the variables to discretize
     includevars = includevars or range(indata.variables.size)
     includevars = [v for v in includevars if v not in excludevars]
-   
+
     for v in includevars:
         # "_nm" means "no missing"
-        vdata = indata.observations[:,v]
-        vmiss = indata.missing[:,v]
+        vdata = indata.observations[:, v]
+        vmiss = indata.missing[:, v]
         vdata_nm = vdata[-vmiss]
         argsorted = vdata_nm.argsort()
 
         if len(vdata_nm):
             # Find bin edges (cutpoints) using no-missing 
-            binsize = len(vdata_nm)//numbins
-            binedges = [vdata_nm[argsorted[binsize*b - 1]] for b in range(numbins)][1:]
+            binsize = len(vdata_nm) // numbins
+            binedges = [vdata_nm[argsorted[binsize * b - 1]] for b in range(numbins)][1:]
             # Discretize full data. Missings get added to bin with 0.0.
-            indata.observations[:,v] = N.searchsorted(binedges, vdata)
+            indata.observations[:, v] = N.searchsorted(binedges, vdata)
 
         oldvar = indata.variables[v]
         newvar = data.DiscreteVariable(oldvar.name, numbins)
-        newvar.__dict__.update(oldvar.__dict__) # copy any other data attached to variable
+        newvar.__dict__.update(oldvar.__dict__)  # copy any other data attached to variable
         newvar.arity = numbins
         indata.variables[v] = newvar
 
     # if discretized all variables, then cast observations to int
     if len(includevars) == indata.variables.size:
         indata.observations = indata.observations.astype(int)
-    
+
     return indata
-
-
